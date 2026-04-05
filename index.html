@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline de Contenu Authentique — Valentin Amory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Epilogue:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0a;
+      --bg-surface: #111111;
+      --bg-highlight: #1a1a1a;
+      --bg-elevated: #242424;
+      --text: #f0ede6;
+      --text-dim: #a8a5a0;
+      --text-sub: #6a6a6a;
+      --accent: #c9a84c;
+      --accent-bright: #dabb5e;
+      --accent-dim: rgba(201,168,76,0.12);
+      --sidebar-bg: #000000;
+      --player-bg: #181818;
+      --border: rgba(255,255,255,0.06);
+      --font-display: 'DM Serif Display', Georgia, serif;
+      --font-body: 'Epilogue', system-ui, sans-serif;
+    }
+
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    ::selection { background: var(--accent); color: var(--bg); }
+
+    /* ===================== APP GRID ===================== */
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      grid-template-rows: 1fr 90px;
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* ===================== SIDEBAR ===================== */
+    .sidebar {
+      grid-row: 1;
+      grid-column: 1;
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .sidebar-logo {
+      padding: 24px 20px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-logo svg { flex-shrink: 0; }
+
+    .sidebar-logo span {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-nav {
+      padding: 0 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sidebar-nav button {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      text-align: left;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .sidebar-nav button:hover { color: var(--text); background: var(--bg-highlight); }
+    .sidebar-nav button.active { color: var(--text); }
+    .sidebar-nav button svg { flex-shrink: 0; opacity: 0.7; }
+
+    .sidebar-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 12px 20px;
+    }
+
+    .sidebar-section-title {
+      padding: 8px 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+    }
+
+    .episode-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 8px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--bg-elevated) transparent;
+    }
+
+    .ep-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+      position: relative;
+    }
+
+    .ep-item:hover { background: var(--bg-highlight); }
+    .ep-item.active { background: var(--bg-highlight); }
+
+    .ep-item-num {
+      width: 20px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-sub);
+      font-weight: 500;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .ep-item.active .ep-item-num .num-text { display: none; }
+    .ep-item .eq-bars { display: none; }
+    .ep-item.active .eq-bars { display: flex; }
+
+    .eq-bars {
+      gap: 2px;
+      align-items: flex-end;
+      height: 14px;
+      justify-content: center;
+    }
+
+    .eq-bar {
+      width: 3px;
+      background: var(--accent);
+      border-radius: 1px;
+      animation: eq 0.8s ease-in-out infinite alternate;
+    }
+    .eq-bar:nth-child(1) { height: 5px; animation-delay: 0s; }
+    .eq-bar:nth-child(2) { height: 10px; animation-delay: 0.2s; }
+    .eq-bar:nth-child(3) { height: 7px; animation-delay: 0.4s; }
+
+    .paused .eq-bar { animation-play-state: paused; }
+
+    @keyframes eq {
+      0% { height: 4px; }
+      100% { height: 14px; }
+    }
+
+    .ep-item-info { flex: 1; min-width: 0; }
+
+    .ep-item-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: color 0.15s;
+    }
+
+    .ep-item.active .ep-item-title { color: var(--accent); }
+    .ep-item:hover .ep-item-title { color: var(--text); }
+
+    .ep-item-dur {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .sidebar-footer a {
+      color: var(--text-sub);
+      text-decoration: none;
+      font-size: 12px;
+      transition: color 0.15s;
+    }
+
+    .sidebar-footer a:hover { color: var(--accent); }
+
+    /* ===================== MAIN CONTENT ===================== */
+    .main-content {
+      grid-row: 1;
+      grid-column: 2;
+      overflow-y: auto;
+      background: var(--bg);
+      scrollbar-width: thin;
+      scrollbar-color: var(--bg-elevated) transparent;
+    }
+
+    /* -- Overview -- */
+    .overview-header {
+      padding: 48px 48px 0;
+      display: flex;
+      gap: 32px;
+      align-items: flex-end;
+      background: linear-gradient(180deg, #1a150a 0%, var(--bg) 100%);
+      padding-bottom: 32px;
+    }
+
+    .cover-art {
+      width: 232px;
+      height: 232px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      background: linear-gradient(145deg, #141005 0%, #0d0d0d 50%, #1a150a 100%);
+      border: 1px solid rgba(201,168,76,0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      text-align: center;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cover-art::before {
+      content: '';
+      position: absolute;
+      top: -30%;
+      right: -30%;
+      width: 80%;
+      height: 80%;
+      background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+    }
+
+    .cover-art .cover-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+      opacity: 0.15;
+      color: var(--accent);
+    }
+
+    .cover-art .cover-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      color: var(--text);
+      line-height: 1.2;
+      position: relative;
+    }
+
+    .cover-art .cover-sub {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-top: 10px;
+      font-weight: 600;
+      position: relative;
+    }
+
+    .overview-meta { flex: 1; min-width: 0; }
+
+    .overview-type {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .overview-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .overview-author {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .overview-author strong { color: var(--text); font-weight: 600; }
+
+    .overview-desc {
+      font-size: 14px;
+      color: var(--text-sub);
+      margin-top: 12px;
+      line-height: 1.6;
+      max-width: 480px;
+    }
+
+    .overview-actions {
+      padding: 24px 48px 0;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .play-all-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s, background 0.15s;
+      box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+    }
+
+    .play-all-btn:hover { transform: scale(1.06); background: var(--accent-bright); }
+    .play-all-btn svg { fill: #000; width: 20px; height: 20px; margin-left: 2px; }
+
+    .overview-badge {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 100px;
+    }
+
+    .overview-episodes {
+      padding: 32px 48px 48px;
+    }
+
+    .overview-episodes h3 {
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .overview-ep-list { display: flex; flex-direction: column; }
+
+    .overview-ep-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 20px 0;
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s;
+      padding-left: 12px;
+      padding-right: 12px;
+      margin: 0 -12px;
+      border-radius: 6px;
+    }
+
+    .overview-ep-item:hover { background: var(--bg-highlight); }
+
+    .overview-ep-play {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+      transition: background 0.15s;
+    }
+
+    .overview-ep-play svg { fill: var(--text); width: 14px; height: 14px; }
+    .overview-ep-item:hover .overview-ep-play { background: var(--bg-elevated); }
+
+    .overview-ep-info { flex: 1; }
+
+    .overview-ep-date {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .overview-ep-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .overview-ep-desc {
+      font-size: 13px;
+      color: var(--text-sub);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .overview-ep-dur {
+      font-size: 12px;
+      color: var(--text-sub);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    /* -- Episode View -- */
+    .episode-view { display: none; padding: 48px; max-width: 860px; }
+    .episode-view.active { display: block; }
+
+    .ep-back {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 32px;
+      padding: 6px 0;
+      transition: color 0.15s;
+    }
+
+    .ep-back:hover { color: var(--text); }
+
+    .ep-view-date {
+      font-size: 12px;
+      color: var(--text-sub);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+    }
+
+    .ep-view-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      margin-bottom: 32px;
+      line-height: 1.2;
+    }
+
+    .ep-body { color: var(--text-dim); font-size: 15px; line-height: 1.75; }
+    .ep-body p { margin-bottom: 16px; }
+    .ep-body strong { color: var(--text); font-weight: 600; }
+
+    .ep-body h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: var(--text);
+      margin: 36px 0 12px;
+    }
+
+    .ep-body h3:first-child { margin-top: 0; }
+
+    .ep-callout {
+      background: var(--accent-dim);
+      border-left: 3px solid var(--accent);
+      padding: 20px 24px;
+      border-radius: 0 8px 8px 0;
+      margin: 24px 0;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .ep-callout strong { color: var(--accent); }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+      margin: 20px 0;
+      list-style: none;
+    }
+
+    .product-grid li {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      transition: background 0.2s;
+    }
+
+    .product-grid li:hover { background: var(--bg-highlight); }
+
+    .product-grid li::before {
+      content: '';
+      display: inline-block;
+      width: 5px;
+      height: 5px;
+      background: var(--accent);
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .ep-promise {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1.15rem;
+      color: var(--text);
+      margin: 24px 0;
+    }
+
+    /* Timeline */
+    .timeline { padding-left: 28px; position: relative; margin: 24px 0; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--accent), var(--border));
+    }
+
+    .tl-phase { position: relative; margin-bottom: 36px; }
+    .tl-phase:last-child { margin-bottom: 0; }
+    .tl-phase::before {
+      content: '';
+      position: absolute;
+      left: -33px;
+      top: 5px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 2px solid var(--accent);
+    }
+
+    .tl-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .tl-phase h4 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .tl-phase ul { list-style: none; }
+    .tl-phase ul li {
+      font-size: 14px;
+      color: var(--text-dim);
+      padding-left: 16px;
+      position: relative;
+      margin-bottom: 4px;
+    }
+    .tl-phase ul li::before {
+      content: '\2014';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      opacity: 0.4;
+    }
+
+    /* Metrics */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      padding: 20px 16px;
+      border-radius: 8px;
+      text-align: center;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .metric-card:hover { background: var(--bg-highlight); transform: translateY(-1px); }
+
+    .metric-val {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: var(--text-sub);
+      font-weight: 500;
+    }
+
+    .metric-card.status .metric-val { color: #5cb85c; }
+
+    .pivot-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+
+    .pivot-box .pivot-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    /* Accordion */
+    .accordion { display: flex; flex-direction: column; gap: 8px; margin: 20px 0; }
+
+    .acc-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .acc-item.open { border-color: rgba(201,168,76,0.2); }
+
+    .acc-header {
+      width: 100%;
+      background: var(--bg-surface);
+      border: none;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: left;
+      transition: background 0.2s;
+    }
+
+    .acc-header:hover { background: var(--bg-highlight); }
+
+    .acc-num {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .acc-header .acc-icon {
+      margin-left: auto;
+      width: 16px;
+      height: 16px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .acc-icon::before, .acc-icon::after {
+      content: '';
+      position: absolute;
+      background: var(--text-sub);
+      border-radius: 1px;
+    }
+
+    .acc-icon::before { width: 12px; height: 1.5px; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    .acc-icon::after { width: 1.5px; height: 12px; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: transform 0.25s; }
+    .acc-item.open .acc-icon::after { transform: translate(-50%, -50%) rotate(90deg); }
+
+    .acc-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+    .acc-body-inner { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    .skill-block { display: flex; flex-direction: column; gap: 4px; }
+    .skill-lbl {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .skill-block p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    .skill-block.crit {
+      background: rgba(201,168,76,0.05);
+      padding: 12px 16px;
+      border-radius: 6px;
+      border-left: 2px solid var(--accent);
+    }
+
+    /* Quote */
+    .ep-quote {
+      text-align: center;
+      padding: 16px 0;
+      margin-bottom: 28px;
+    }
+
+    .ep-quote blockquote {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .ep-quote .q-dash {
+      display: block;
+      width: 32px;
+      height: 2px;
+      background: var(--accent);
+      margin: 16px auto 0;
+    }
+
+    .takeaways { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .takeaways li {
+      font-size: 15px;
+      color: var(--text-dim);
+      padding-left: 20px;
+      position: relative;
+      line-height: 1.6;
+    }
+    .takeaways li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 9px;
+      width: 7px;
+      height: 7px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+    }
+
+    .now-grid { display: flex; flex-direction: column; gap: 12px; }
+    .now-row { display: flex; gap: 14px; align-items: baseline; }
+    .now-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      min-width: 100px;
+      flex-shrink: 0;
+    }
+    .now-row p { font-size: 14px; color: var(--text-dim); }
+
+    .ep-closing {
+      margin-top: 28px;
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+
+    .ep-screenshot {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(201,168,76,0.2);
+      margin: 24px 0;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .ep-screenshot-caption {
+      font-size: 12px;
+      color: var(--text-sub);
+      text-align: center;
+      margin-top: -16px;
+      margin-bottom: 24px;
+      font-style: italic;
+    }
+
+    .funnel-flow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 16px 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .funnel-step {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 6px;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .funnel-arrow { color: var(--accent); font-size: 16px; }
+
+    .evolution-box {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: center;
+      margin: 24px 0;
+    }
+
+    .evo-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .evo-card h4 {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .evo-card ul { list-style: none; }
+    .evo-card ul li {
+      font-size: 13px;
+      color: var(--text-dim);
+      padding: 2px 0;
+    }
+
+    .evo-card.after { border-color: rgba(201,168,76,0.3); }
+    .evo-card.after h4 { color: var(--accent); }
+    .evo-arrow { color: var(--accent); font-size: 28px; font-weight: 300; }
+
+    @media (max-width: 640px) {
+      .evolution-box { grid-template-columns: 1fr; }
+      .evo-arrow { text-align: center; transform: rotate(90deg); }
+      .funnel-flow { font-size: 12px; }
+    }
+
+    /* ===================== PLAYER BAR ===================== */
+    .player-bar {
+      grid-row: 2;
+      grid-column: 1 / -1;
+      background: var(--player-bg);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      align-items: center;
+      padding: 0 16px;
+      z-index: 10;
+    }
+
+    .player-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .player-thumb {
+      width: 56px;
+      height: 56px;
+      border-radius: 4px;
+      background: linear-gradient(145deg, #141005, #0d0d0d);
+      border: 1px solid rgba(201,168,76,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .player-thumb svg { opacity: 0.25; }
+
+    .player-info { min-width: 0; }
+
+    .player-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-artist {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .player-center { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+    .player-controls { display: flex; align-items: center; gap: 20px; }
+
+    .ctrl-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      transition: transform 0.1s;
+    }
+
+    .ctrl-btn svg { fill: var(--text-dim); transition: fill 0.15s; }
+    .ctrl-btn:hover svg { fill: var(--text); }
+    .ctrl-btn:active { transform: scale(0.95); }
+
+    .ctrl-play {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--text);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s, background 0.15s;
+    }
+
+    .ctrl-play:hover { transform: scale(1.06); background: #fff; }
+    .ctrl-play:active { transform: scale(0.98); }
+    .ctrl-play svg { fill: #000; width: 16px; height: 16px; }
+
+    .player-progress {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .player-time {
+      font-size: 11px;
+      color: var(--text-sub);
+      font-variant-numeric: tabular-nums;
+      min-width: 36px;
+      text-align: center;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 4px;
+      background: var(--bg-elevated);
+      border-radius: 2px;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .progress-track:hover { height: 5px; }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--text-dim);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s linear;
+    }
+
+    .progress-track:hover .progress-fill { background: var(--accent); }
+
+    .player-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .volume-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .volume-wrap svg { fill: var(--text-sub); flex-shrink: 0; }
+
+    .volume-track {
+      width: 90px;
+      height: 4px;
+      background: var(--bg-elevated);
+      border-radius: 2px;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .volume-fill {
+      height: 100%;
+      width: 70%;
+      background: var(--text-dim);
+      border-radius: 2px;
+    }
+
+    .volume-track:hover .volume-fill { background: var(--accent); }
+
+    /* ===================== HIDDEN UTILITY ===================== */
+    .hidden { display: none !important; }
+
+    /* ===================== RESPONSIVE ===================== */
+    @media (max-width: 768px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 80px;
+      }
+
+      .sidebar { display: none; }
+      .overview-header { padding: 32px 24px 24px; flex-direction: column; align-items: flex-start; gap: 20px; }
+      .cover-art { width: 160px; height: 160px; }
+      .overview-actions { padding: 16px 24px 0; }
+      .overview-episodes { padding: 24px; }
+      .episode-view { padding: 24px; }
+      .overview-title { font-size: 1.6rem; }
+      .product-grid { grid-template-columns: 1fr; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .player-bar { grid-template-columns: 1fr auto; padding: 0 12px; }
+      .player-center { display: none; }
+      .player-right { display: none; }
+      .player-left { gap: 10px; }
+      .player-thumb { width: 44px; height: 44px; }
+
+      .mobile-ctrl {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .mobile-ctrl { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="11" stroke="#c9a84c" stroke-width="1.5"/>
+        <polygon points="10,7 17,12 10,17" fill="#c9a84c"/>
+      </svg>
+      <span>Podcast</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="active" onclick="showOverview()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L4 9v12h5v-7h6v7h5V9z"/></svg>
+        Accueil
+      </button>
+    </nav>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-title">Episodes</div>
+
+    <div class="episode-list" id="epList"></div>
+
+    <div class="sidebar-footer">
+      <a href="https://portfolio.valentinamory.fr" target="_blank" rel="noopener">portfolio.valentinamory.fr</a>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN ==================== -->
+  <div class="main-content" id="mainContent">
+
+    <!-- Overview -->
+    <div id="overview">
+      <div class="overview-header">
+        <div class="cover-art">
+          <div class="cover-icon">&#9654;</div>
+          <div class="cover-title">Pipeline de Contenu Authentique</div>
+          <div class="cover-sub">Valentin Amory</div>
+        </div>
+        <div class="overview-meta">
+          <div class="overview-type">Podcast</div>
+          <h1 class="overview-title">Pipeline de Contenu Authentique</h1>
+          <p class="overview-author"><strong>Valentin Amory</strong> &middot; My Digital School Annecy &middot; 2025&ndash;2026</p>
+          <p class="overview-desc">Construire un produit digital, un funnel de vente complet, lancer des ads, encaisser 0 ventes &mdash; et transformer l'&eacute;chec en dashboard gamifi&eacute;.<br>7 &eacute;pisodes, z&eacute;ro bullshit.</p>
+        </div>
+      </div>
+
+      <div class="overview-actions">
+        <button class="play-all-btn" onclick="playEp(0)" title="Lancer">
+          <svg viewBox="0 0 16 16"><polygon points="4,1.5 13.5,8 4,14.5"/></svg>
+        </button>
+        <span class="overview-badge">Projet Entrepreneurial &middot; B2 &middot; Drive Your Skills</span>
+      </div>
+
+      <!-- Dashboard showcase on overview -->
+      <div style="padding: 32px 48px 0;">
+        <img src="image.png" alt="Dashboard Pipeline de Contenu Authentique" class="ep-screenshot">
+        <p class="ep-screenshot-caption">Le produit final &mdash; Dashboard avec pipeline, gamification et suivi int&eacute;gr&eacute;</p>
+      </div>
+
+      <div class="overview-episodes">
+        <h3>Tous les &eacute;pisodes</h3>
+        <div class="overview-ep-list" id="overviewEpList"></div>
+      </div>
+    </div>
+
+    <!-- Episode view (single) -->
+    <div class="episode-view" id="episodeView">
+      <button class="ep-back" onclick="showOverview()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11 1L4 8l7 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Tous les &eacute;pisodes
+      </button>
+      <div class="ep-view-date" id="epViewDate"></div>
+      <h1 class="ep-view-title" id="epViewTitle"></h1>
+      <div class="ep-body" id="epViewBody"></div>
+    </div>
+
+  </div>
+
+  <!-- ==================== PLAYER BAR ==================== -->
+  <div class="player-bar">
+    <div class="player-left">
+      <div class="player-thumb">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polygon points="10,7 17,12 10,17" fill="#c9a84c" opacity="0.4"/></svg>
+      </div>
+      <div class="player-info">
+        <div class="player-title" id="playerTitle">&mdash;</div>
+        <div class="player-artist">Valentin Amory</div>
+      </div>
+    </div>
+
+    <div class="player-center">
+      <div class="player-controls">
+        <button class="ctrl-btn" onclick="prevEp()" title="Pr&eacute;c&eacute;dent">
+          <svg width="18" height="18" viewBox="0 0 16 16"><path d="M13 2.5L6 8l7 5.5zM3 2.5v11" stroke="currentColor" stroke-width="0" fill="currentColor"/><rect x="2" y="2" width="2" height="12" rx="0.5"/><polygon points="13,2.5 6,8 13,13.5"/></svg>
+        </button>
+        <button class="ctrl-play" id="playBtn" onclick="togglePlay()" title="Lecture">
+          <svg id="playIcon" viewBox="0 0 16 16"><polygon points="4.5,1.5 13.5,8 4.5,14.5"/></svg>
+          <svg id="pauseIcon" viewBox="0 0 16 16" class="hidden"><rect x="3" y="1.5" width="3.5" height="13" rx="0.8"/><rect x="9.5" y="1.5" width="3.5" height="13" rx="0.8"/></svg>
+        </button>
+        <button class="ctrl-btn" onclick="nextEp()" title="Suivant">
+          <svg width="18" height="18" viewBox="0 0 16 16"><rect x="12" y="2" width="2" height="12" rx="0.5"/><polygon points="3,2.5 10,8 3,13.5"/></svg>
+        </button>
+      </div>
+      <div class="player-progress">
+        <span class="player-time" id="pTimeCur">0:00</span>
+        <div class="progress-track" id="progressTrack">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <span class="player-time" id="pTimeDur">0:00</span>
+      </div>
+    </div>
+
+    <div class="player-right">
+      <div class="volume-wrap">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 5.5h2.5L8 2v12L4.5 10.5H2a.5.5 0 01-.5-.5V6a.5.5 0 01.5-.5zm8.5.17a3.5 3.5 0 010 4.66m2-6.66a6 6 0 010 8.66"/></svg>
+        <div class="volume-track"><div class="volume-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- Mobile controls -->
+    <div class="mobile-ctrl">
+      <button class="ctrl-btn" onclick="prevEp()"><svg width="20" height="20" viewBox="0 0 16 16" fill="#f0ede6"><rect x="2" y="2" width="2" height="12" rx="0.5"/><polygon points="13,2.5 6,8 13,13.5"/></svg></button>
+      <button class="ctrl-play" id="playBtnM" onclick="togglePlay()">
+        <svg class="mp-play" viewBox="0 0 16 16"><polygon points="4.5,1.5 13.5,8 4.5,14.5"/></svg>
+        <svg class="mp-pause hidden" viewBox="0 0 16 16"><rect x="3" y="1.5" width="3.5" height="13" rx="0.8"/><rect x="9.5" y="1.5" width="3.5" height="13" rx="0.8"/></svg>
+      </button>
+      <button class="ctrl-btn" onclick="nextEp()"><svg width="20" height="20" viewBox="0 0 16 16" fill="#f0ede6"><rect x="12" y="2" width="2" height="12" rx="0.5"/><polygon points="3,2.5 10,8 3,13.5"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<script>
+const episodes = [
+  {
+    title: "Pourquoi ce projet existe",
+    desc: "Le probl\u00e8me des infopreneurs et la n\u00e9cessit\u00e9 d\u2019un syst\u00e8me",
+    duration: "5 min",
+    durSec: 300,
+    date: "Avr. 2026",
+    body: `
+      <h3>Le probl\u00e8me</h3>
+      <p>Les infopreneurs francophones sont \u00e9puis\u00e9s par la cr\u00e9ation de contenu quotidienne. Pas de syst\u00e8me, pas de m\u00e9thode.</p>
+      <p>Cons\u00e9quences\u00a0: <strong>culpabilit\u00e9 permanente</strong>, perte d\u2019authenticit\u00e9, charge mentale qui finit par d\u00e9vorer le business.</p>
+      <div class="ep-callout">
+        <strong>Mon point de d\u00e9part\u00a0:</strong> auto-entrepreneur depuis mes 17 ans, background motion design et montage vid\u00e9o. J\u2019ai v\u00e9cu ce probl\u00e8me. J\u2019ai voulu le r\u00e9soudre.
+      </div>
+    `
+  },
+  {
+    title: "Le Pipeline \u00e0 27\u20ac",
+    desc: "Le produit, l\u2019\u00e9cosyst\u00e8me marketing, et le funnel de vente complet",
+    duration: "8 min",
+    durSec: 480,
+    date: "Avr. 2026",
+    body: `
+      <div class="ep-callout">
+        <strong>Batching Cognitif Structur\u00e9</strong> \u2014 s\u00e9parer les phases cognitives (id\u00e9ation / production / programmation) pour capitaliser sur les cycles d\u2019\u00e9nergie naturels.
+      </div>
+      <h3>8 composantes du produit</h3>
+      <ul class="product-grid">
+        <li>Templates Google Sheet & Drive</li>
+        <li>Workflow Metricool</li>
+        <li>Prompts IA Authentiques</li>
+        <li>Process Anti-Procrastination</li>
+        <li>Kit D\u00e9l\u00e9gation Fiverr</li>
+        <li>Texte \u00e0 Trou ManyChat</li>
+        <li>Adaptateur de Niche</li>
+        <li>Prompt Titres Algorithme</li>
+      </ul>
+      <p class="ep-promise">\u00ab\u00a02 semaines de reels en 5h dans la semaine\u00a0\u00bb</p>
+      <h3>L\u2019\u00e9cosyst\u00e8me de vente</h3>
+      <p>Le produit seul ne suffit pas. J\u2019ai construit un <strong>funnel de vente complet</strong> de z\u00e9ro\u00a0:</p>
+      <div class="funnel-flow">
+        <span class="funnel-step">Quiz de qualification</span>
+        <span class="funnel-arrow">\u2192</span>
+        <span class="funnel-step">Page de vente</span>
+        <span class="funnel-arrow">\u2192</span>
+        <span class="funnel-step">Checkout 27\u20ac</span>
+        <span class="funnel-arrow">\u2192</span>
+        <span class="funnel-step">Upsell 47\u20ac</span>
+        <span class="funnel-arrow">\u2192</span>
+        <span class="funnel-step">Downsell 17\u20ac</span>
+        <span class="funnel-arrow">\u2192</span>
+        <span class="funnel-step">S\u00e9quence email</span>
+      </div>
+      <p>Page de vente r\u00e9dig\u00e9e de A \u00e0 Z \u2014 <strong>23 objections anticip\u00e9es</strong>, psychologie d\u2019achat, ancrage sur preuves, z\u00e9ro dark pattern. Funnel quiz construit en React/Lovable, leads stock\u00e9s dans Supabase, tracking via <strong>Pixel Meta API Conversions</strong> (server-side).</p>
+      <p>Cr\u00e9ation du compte Instagram, production de <strong>105 id\u00e9es de contenu</strong> sur 3 piliers, strat\u00e9gie de hooks viraux, mockups produit premium noir/or.</p>
+    `
+  },
+  {
+    title: "La construction",
+    desc: "Du produit au funnel, de l\u2019Instagram au lancement ads",
+    duration: "10 min",
+    durSec: 600,
+    date: "Avr. 2026",
+    body: `
+      <div class="timeline">
+        <div class="tl-phase">
+          <div class="tl-label">Phase 1 \u2014 Conception & produit</div>
+          <h4>Cr\u00e9ation du syst\u00e8me</h4>
+          <ul>
+            <li>Construction du Pipeline de Contenu (templates, workflows, prompts)</li>
+            <li>D\u00e9finition de l\u2019avatar client \u00ab\u00a0Maxime\u00a0\u00bb</li>
+            <li>Cartographie de 23 objections prospects</li>
+            <li>Cr\u00e9ation du compte Instagram + strat\u00e9gie contenu</li>
+          </ul>
+        </div>
+        <div class="tl-phase">
+          <div class="tl-label">Phase 2 \u2014 Funnel & marketing</div>
+          <h4>L\u2019\u00e9cosyst\u00e8me de vente</h4>
+          <ul>
+            <li>Page de vente r\u00e9dig\u00e9e de A \u00e0 Z (psychologie d\u2019achat, z\u00e9ro dark pattern)</li>
+            <li>Funnel complet Systeme.io\u00a0: checkout \u2192 upsell 47\u20ac \u2192 downsell 17\u20ac \u2192 emails</li>
+            <li>Funnel quiz React/Lovable + Supabase pour les leads</li>
+            <li>Pixel Meta API Conversions (server-side) + audit s\u00e9curit\u00e9 RGPD</li>
+            <li>105 id\u00e9es de contenu Instagram sur 3 piliers</li>
+          </ul>
+        </div>
+        <div class="tl-phase">
+          <div class="tl-label">Phase 3 \u2014 Lancement & ads</div>
+          <h4>Mise sur le march\u00e9</h4>
+          <ul>
+            <li>Lancement paid ads Meta</li>
+            <li>R\u00e9sultat\u00a0: 0 vente en audience froide</li>
+            <li>Analyse\u00a0: budget insuffisant, pas de warmup, confiance absente</li>
+          </ul>
+        </div>
+      </div>
+    `
+  },
+  {
+    title: "R\u00e9sultats & Pivot",
+    desc: "0 vente, pas d\u2019abandon \u2014 am\u00e9lioration du produit et changement de strat\u00e9gie",
+    duration: "8 min",
+    durSec: 480,
+    date: "Avr. 2026",
+    body: `
+      <div class="metrics-grid">
+        <div class="metric-card"><span class="metric-val">120h</span><span class="metric-label">investies</span></div>
+        <div class="metric-card"><span class="metric-val">0</span><span class="metric-label">vente via Ads</span></div>
+        <div class="metric-card"><span class="metric-val">1</span><span class="metric-label">pivot strat\u00e9gique</span></div>
+        <div class="metric-card"><span class="metric-val">4</span><span class="metric-label">pages construites</span></div>
+        <div class="metric-card"><span class="metric-val">105</span><span class="metric-label">id\u00e9es de contenu</span></div>
+        <div class="metric-card"><span class="metric-val">23</span><span class="metric-label">objections mapp\u00e9es</span></div>
+        <div class="metric-card"><span class="metric-val">7</span><span class="metric-label">outils ma\u00eetris\u00e9s</span></div>
+        <div class="metric-card status"><span class="metric-val">Actif</span><span class="metric-label">statut du projet</span></div>
+      </div>
+      <p><em>\u00ab\u00a0Les ads n\u2019ont pas converti. Plut\u00f4t que de nier, j\u2019ai analys\u00e9, d\u00e9cid\u00e9, pivot\u00e9.\u00a0\u00bb</em></p>
+
+      <h3>Le pivot\u00a0: ne pas abandonner, s\u2019am\u00e9liorer</h3>
+      <p>0 vente en ads = le signal qu\u2019il faut changer d\u2019approche. Pas arr\u00eater. <strong>Double pivot\u00a0:</strong> changer la strat\u00e9gie de distribution ET am\u00e9liorer le produit.</p>
+
+      <div class="pivot-box">
+        <div class="pivot-label">Pivot strat\u00e9gique #1 \u2014 Distribution</div>
+        <p><strong style="color:var(--accent)">Ads \u2192 Cold DM</strong>\u00a0: identifier des infopreneurs actifs sur Instagram, approche directe personnalis\u00e9e, qualification avant vente. Aller chercher le client au lieu d\u2019attendre qu\u2019il vienne.</p>
+      </div>
+
+      <div class="pivot-box" style="margin-top:12px">
+        <div class="pivot-label">Pivot strat\u00e9gique #2 \u2014 Produit</div>
+        <p><strong style="color:var(--accent)">Templates \u2192 Dashboard complet</strong>\u00a0: le produit n\u2019est plus une collection de prompts \u00e0 copier-coller. C\u2019est un v\u00e9ritable outil avec pipeline, gamification et suivi int\u00e9gr\u00e9.</p>
+      </div>
+
+      <div class="evolution-box">
+        <div class="evo-card">
+          <h4>V1 \u2014 Avant</h4>
+          <ul>
+            <li>\u2022 Templates Google Sheet</li>
+            <li>\u2022 Prompts \u00e0 copier-coller</li>
+            <li>\u2022 PDF statiques</li>
+            <li>\u2022 Pas de suivi</li>
+          </ul>
+        </div>
+        <div class="evo-arrow">\u2192</div>
+        <div class="evo-card after">
+          <h4>V2 \u2014 Apr\u00e8s pivot</h4>
+          <ul>
+            <li>\u2022 Dashboard interactif complet</li>
+            <li>\u2022 Pipeline\u00a0: Capture \u2192 Id\u00e9ation \u2192 Analyse \u2192 Production \u2192 Packaging</li>
+            <li>\u2022 Gamification\u00a0: XP, niveaux, achievements, streaks</li>
+            <li>\u2022 Suivi de progression int\u00e9gr\u00e9</li>
+          </ul>
+        </div>
+      </div>
+
+      <img src="image.png" alt="Dashboard Pipeline de Contenu Authentique \u2014 interface avec pipeline, achievements et gamification" class="ep-screenshot">
+      <p class="ep-screenshot-caption">Le dashboard actuel du Pipeline de Contenu Authentique</p>
+    `
+  },
+  {
+    title: "Comp\u00e9tences d\u00e9velopp\u00e9es",
+    desc: "Marketing, d\u00e9veloppement, entrepreneuriat, strat\u00e9gie contenu",
+    duration: "12 min",
+    durSec: 720,
+    date: "Avr. 2026",
+    body: `
+      <div class="accordion">
+        <div class="acc-item">
+          <button class="acc-header" onclick="toggleAcc(this)">
+            <span class="acc-num">01</span>
+            Marketing digital & copywriting
+            <span class="acc-icon"></span>
+          </button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <div class="skill-block"><span class="skill-lbl">Identification</span><p>Copywriting de conversion, psychologie d\u2019achat, architecture de funnel multi-\u00e9tapes, strat\u00e9gie paid ads.</p></div>
+            <div class="skill-block"><span class="skill-lbl">Illustration</span><p>Page de vente compl\u00e8te (sans dark patterns, 23 objections anticip\u00e9es). Funnel de vente\u00a0: quiz de qualification \u2192 page de vente \u2192 checkout 27\u20ac \u2192 upsell 47\u20ac \u2192 downsell 17\u20ac \u2192 s\u00e9quence email automatis\u00e9e. Mockups produit, strat\u00e9gie Instagram, 105 id\u00e9es de contenu.</p></div>
+            <div class="skill-block"><span class="skill-lbl">Impact</span><p>\u00c9cosyst\u00e8me de vente complet con\u00e7u et impl\u00e9ment\u00e9 seul, de la strat\u00e9gie \u00e0 l\u2019ex\u00e9cution technique.</p></div>
+            <div class="skill-block crit"><span class="skill-lbl">R\u00e9flexion critique</span><p>Page trop longue pour audience froide. Valider la demande avant de construire.</p></div>
+          </div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-header" onclick="toggleAcc(this)">
+            <span class="acc-num">02</span>
+            D\u00e9veloppement web & int\u00e9grations
+            <span class="acc-icon"></span>
+          </button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <div class="skill-block"><span class="skill-lbl">Identification</span><p>No-code/low-code SaaS, APIs, s\u00e9curit\u00e9, tracking.</p></div>
+            <div class="skill-block"><span class="skill-lbl">Illustration</span><p>Pixel Meta API Conversions server-side, funnel quiz React/Lovable, Supabase, audit RLS + RGPD.</p></div>
+            <div class="skill-block"><span class="skill-lbl">Impact</span><p>Auditer et s\u00e9curiser un funnel \u2014 comp\u00e9tence client directe.</p></div>
+            <div class="skill-block crit"><span class="skill-lbl">R\u00e9flexion critique</span><p>Trop de temps sur le quiz vs valeur r\u00e9elle \u00e0 ce stade.</p></div>
+          </div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-header" onclick="toggleAcc(this)">
+            <span class="acc-num">03</span>
+            Entrepreneuriat & gestion solo
+            <span class="acc-icon"></span>
+          </button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <div class="skill-block"><span class="skill-lbl">Identification</span><p>Piloter un projet de bout en bout sans \u00e9quipe.</p></div>
+            <div class="skill-block"><span class="skill-lbl">Illustration</span><p>Id\u00e9e \u2192 produit \u2192 funnel \u2192 ads \u2192 analyse \u2192 pivot, seul, de bout en bout.</p></div>
+            <div class="skill-block"><span class="skill-lbl">Impact</span><p>D\u00e9cision rapide bas\u00e9e donn\u00e9es, tol\u00e9rance \u00e0 l\u2019incertitude, pivot sans d\u00e9ni.</p></div>
+            <div class="skill-block crit"><span class="skill-lbl">R\u00e9flexion critique</span><p>Tester la demande AVANT de construire le produit. Erreur classique du premier lancement.</p></div>
+          </div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-header" onclick="toggleAcc(this)">
+            <span class="acc-num">04</span>
+            Strat\u00e9gie contenu & personal branding
+            <span class="acc-icon"></span>
+          </button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <div class="skill-block"><span class="skill-lbl">Identification</span><p>Strat\u00e9gie Instagram, psychologie virale, ligne \u00e9ditoriale.</p></div>
+            <div class="skill-block"><span class="skill-lbl">Illustration</span><p>105 id\u00e9es sur 3 piliers, analyse hooks viraux, Cold DM personnalis\u00e9s.</p></div>
+            <div class="skill-block"><span class="skill-lbl">Impact</span><p>Compr\u00e9hension op\u00e9rationnelle de la cr\u00e9ation \u00e0 scale.</p></div>
+            <div class="skill-block crit"><span class="skill-lbl">R\u00e9flexion critique</span><p>105 id\u00e9es sans les tester = travail th\u00e9orique. Ce qui compte c\u2019est le feedback r\u00e9el.</p></div>
+          </div></div>
+        </div>
+      </div>
+    `
+  },
+  {
+    title: "Ce que j\u2019ai appris",
+    desc: "Le vrai livrable \u2014 les le\u00e7ons qui restent",
+    duration: "4 min",
+    durSec: 240,
+    date: "Avr. 2026",
+    body: `
+      <div class="ep-quote">
+        <blockquote>\u00ab\u00a0On ne teste pas des ads. On teste une hypoth\u00e8se. Et l\u2019hypoth\u00e8se \u00e9tait fausse.\u00a0\u00bb</blockquote>
+        <span class="q-dash"></span>
+      </div>
+      <ul class="takeaways">
+        <li>Valider avant de construire \u2014 le march\u00e9 a toujours le dernier mot</li>
+        <li>Le copywriting ne compense pas le trafic \u2014 la distribution pr\u00e9c\u00e8de la conversion</li>
+        <li>Un pivot n\u2019est pas un \u00e9chec, c\u2019est une d\u00e9cision</li>
+      </ul>
+    `
+  },
+  {
+    title: "Et maintenant",
+    desc: "Le produit a \u00e9volu\u00e9, la strat\u00e9gie aussi \u2014 le projet continue",
+    duration: "3 min",
+    durSec: 180,
+    date: "Avr. 2026",
+    body: `
+      <div class="now-grid">
+        <div class="now-row"><span class="now-lbl">Statut</span><p><strong style="color:var(--accent)">Actif</strong></p></div>
+        <div class="now-row"><span class="now-lbl">Produit</span><p>Dashboard complet avec pipeline (Capture \u2192 Id\u00e9ation \u2192 Analyse \u2192 Production \u2192 Packaging), gamification, achievements, niveaux</p></div>
+        <div class="now-row"><span class="now-lbl">Strat\u00e9gie</span><p>Cold DM cibl\u00e9s sur infopreneurs Instagram \u2014 approche directe, qualification avant vente</p></div>
+      </div>
+      <img src="image.png" alt="Dashboard Pipeline de Contenu Authentique" class="ep-screenshot">
+      <p class="ep-screenshot-caption">Le dashboard actuel \u2014 plus qu\u2019un template, un vrai outil</p>
+      <p class="ep-closing">\u00ab\u00a0Ce projet continue apr\u00e8s la soutenance.\u00a0\u00bb</p>
+    `
+  }
+];
+
+let currentEp = -1;
+let isPlaying = false;
+let progressInterval = null;
+let progressPct = 0;
+
+// ---- Build sidebar episode list ----
+const epListEl = document.getElementById('epList');
+const overviewList = document.getElementById('overviewEpList');
+
+episodes.forEach((ep, i) => {
+  // Sidebar item
+  const div = document.createElement('div');
+  div.className = 'ep-item';
+  div.dataset.idx = i;
+  div.innerHTML = `
+    <div class="ep-item-num">
+      <span class="num-text">${i + 1}</span>
+      <div class="eq-bars"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></div>
+    </div>
+    <div class="ep-item-info">
+      <div class="ep-item-title">${ep.title}</div>
+      <div class="ep-item-dur">${ep.duration}</div>
+    </div>
+  `;
+  div.addEventListener('click', () => playEp(i));
+  epListEl.appendChild(div);
+
+  // Overview item
+  const oel = document.createElement('div');
+  oel.className = 'overview-ep-item';
+  oel.innerHTML = `
+    <button class="overview-ep-play"><svg viewBox="0 0 16 16"><polygon points="4.5,1.5 13.5,8 4.5,14.5"/></svg></button>
+    <div class="overview-ep-info">
+      <div class="overview-ep-date">${ep.date}</div>
+      <div class="overview-ep-title">\u00c9p. ${i + 1} \u2014 ${ep.title}</div>
+      <div class="overview-ep-desc">${ep.desc}</div>
+    </div>
+    <div class="overview-ep-dur">${ep.duration}</div>
+  `;
+  oel.addEventListener('click', () => playEp(i));
+  overviewList.appendChild(oel);
+});
+
+function playEp(idx) {
+  if (idx < 0 || idx >= episodes.length) return;
+  currentEp = idx;
+  isPlaying = true;
+  progressPct = 0;
+
+  // Update sidebar
+  document.querySelectorAll('.ep-item').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+
+  // Show episode view
+  document.getElementById('overview').classList.add('hidden');
+  const ev = document.getElementById('episodeView');
+  ev.classList.add('active');
+  ev.scrollTop = 0;
+  document.getElementById('mainContent').scrollTop = 0;
+
+  const ep = episodes[idx];
+  document.getElementById('epViewDate').textContent = ep.date + ' \u00b7 ' + ep.duration;
+  document.getElementById('epViewTitle').textContent = '\u00c9p. ' + (idx + 1) + ' \u2014 ' + ep.title;
+  document.getElementById('epViewBody').innerHTML = ep.body;
+
+  // Update player
+  document.getElementById('playerTitle').textContent = ep.title;
+  document.getElementById('pTimeDur').textContent = formatTime(ep.durSec);
+  document.getElementById('pTimeCur').textContent = '0:00';
+  document.getElementById('progressFill').style.width = '0%';
+
+  updatePlayState();
+  startProgress();
+}
+
+function showOverview() {
+  document.getElementById('overview').classList.remove('hidden');
+  document.getElementById('episodeView').classList.remove('active');
+}
+
+function nextEp() { if (currentEp < episodes.length - 1) playEp(currentEp + 1); }
+function prevEp() { if (currentEp > 0) playEp(currentEp - 1); }
+
+function togglePlay() {
+  if (currentEp < 0) { playEp(0); return; }
+  isPlaying = !isPlaying;
+  updatePlayState();
+  if (isPlaying) startProgress(); else stopProgress();
+}
+
+function updatePlayState() {
+  const play = document.getElementById('playIcon');
+  const pause = document.getElementById('pauseIcon');
+  const mPlay = document.querySelector('.mp-play');
+  const mPause = document.querySelector('.mp-pause');
+
+  if (isPlaying) {
+    play.classList.add('hidden'); pause.classList.remove('hidden');
+    if (mPlay) { mPlay.classList.add('hidden'); mPause.classList.remove('hidden'); }
+  } else {
+    play.classList.remove('hidden'); pause.classList.add('hidden');
+    if (mPlay) { mPlay.classList.remove('hidden'); mPause.classList.add('hidden'); }
+  }
+
+  // Equalizer pause state
+  document.querySelectorAll('.ep-item.active .eq-bars').forEach(el => {
+    el.classList.toggle('paused', !isPlaying);
+  });
+}
+
+function startProgress() {
+  stopProgress();
+  progressInterval = setInterval(() => {
+    if (currentEp < 0) return;
+    const dur = episodes[currentEp].durSec;
+    progressPct += (0.5 / dur) * 100;
+    if (progressPct >= 100) { progressPct = 100; stopProgress(); }
+    document.getElementById('progressFill').style.width = progressPct + '%';
+    const cur = Math.floor((progressPct / 100) * dur);
+    document.getElementById('pTimeCur').textContent = formatTime(cur);
+  }, 500);
+}
+
+function stopProgress() {
+  if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m + ':' + String(sec).padStart(2, '0');
+}
+
+// Accordion
+function toggleAcc(btn) {
+  const item = btn.parentElement;
+  const body = item.querySelector('.acc-body');
+  const wasOpen = item.classList.contains('open');
+
+  // Close all in same accordion
+  item.closest('.accordion').querySelectorAll('.acc-item').forEach(i => {
+    i.classList.remove('open');
+    i.querySelector('.acc-body').style.maxHeight = null;
+  });
+
+  if (!wasOpen) {
+    item.classList.add('open');
+    body.style.maxHeight = body.scrollHeight + 'px';
+  }
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+    e.preventDefault();
+    togglePlay();
+  }
+  if (e.code === 'ArrowRight') { e.preventDefault(); nextEp(); }
+  if (e.code === 'ArrowLeft') { e.preventDefault(); prevEp(); }
+});
+
+// Click on progress bar
+document.getElementById('progressTrack').addEventListener('click', function(e) {
+  if (currentEp < 0) return;
+  const rect = this.getBoundingClientRect();
+  progressPct = ((e.clientX - rect.left) / rect.width) * 100;
+  document.getElementById('progressFill').style.width = progressPct + '%';
+  const cur = Math.floor((progressPct / 100) * episodes[currentEp].durSec);
+  document.getElementById('pTimeCur').textContent = formatTime(cur);
+});
+</script>
+
+</body>
+</html>
